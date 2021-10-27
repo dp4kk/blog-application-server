@@ -63,6 +63,13 @@ app.get('/searchblog',async(req,res)=>{
     res.send(blogdata)
 })
 
+app.get('/userblog',async(req,res)=>{
+    let name=req.query.name
+    const userblog = await Blog.find({creator : name}).exec()
+    res.send(userblog)
+})
+
+
 app.get('/',(req,res)=>{
     res.send('CHECK CHECK CHECK')
 })
