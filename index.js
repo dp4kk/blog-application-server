@@ -1,82 +1,100 @@
-require('dotenv/config')
-const express=require('express')
-const cors=require('cors')
-const mongoose=require('mongoose')
+require("dotenv/config");
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
 
-const app=express()
+const app = express();
 
-app.use(cors({credentials:true , origin:true}))
-app.options('*',cors())
-app.use(express.urlencoded({extended:true}))
-app.use(express.json())
+app.use(cors({ credentials: true, origin: true }));
+app.options("*", cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
+mongoose.connect(process.env.MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
+const blogSchema = new mongoose.Schema(
+  {
+    title: String,
+    content: String,
+    imageURL: String,
+    creator: String,
+    comment: Array,
+    date: Date,
+  },
+  {
+    collection: "blogdata",
+  }
+);
 
-mongoose.connect(process.env.MONGO_URL,{useNewUrlParser :true ,useUnifiedTopology:true})
+const Blog = mongoose.model("blog", blogSchema);
 
-const blogSchema = new mongoose.Schema({
-    title:String,
-    content:String,
-    imageURL:String,
-    creator:String,
-    comment:Array,
-    date:Date
-},
-{
-    collection:"blogdata"
-}) 
+app.post("/saveblog", async (req, res) => {
+  const { title, content, imageURL, creator } = req.body;
 
-const Blog=mongoose.model('blog',blogSchema)
+  try {
+    const newBlog = new Blog({
+      title,
+      content,
+      imageURL,
+      creator,
+      date: new Date(),
+    });
 
-app.post('/saveblog',async(req,res)=>{
-    const {title,content,imageURL,creator}=req.body
+    await newBlog
+      .save()
+      .then(() => {
+        res.status(200).send({ message: "Blog Saved" });
+      })
+      .catch((err) => {
+        res.status(400).send({ message: err });
+      });
+  } catch (error) {
+    res.status(400).send({ message: error });
+  }
+});
 
-    try {
-        const newBlog = new Blog({
-            title,
-            content,
-            imageURL,
-            creator,
-            date:new Date()
-        })
+app.post("/deleteblog", async (req, res) => {
+  const { id } = req.body;
 
-        await newBlog.save().then(()=>{
-            res.status(200).send({message:"Blog Saved"})
-        })
-        .catch((err)=>{
-            res.status(400).send({message:err})
-        })
-    } catch (error) {
-        res.status(400).send({message:error})      
-    }
-})
+  await Blog.findByIdAndDelete({ _id: id })
+    .then(() => res.send({ message: "Blog deleted" }))
+    .catch((err) => res.send({ message: err }));
+});
 
+app.post("/editblog", async (req, res) => {
+  const { title, content, imageURL, id } = req.body;
+  await Blog.findByIdAndUpdate(
+    { _id: id },
+    { title: title, content: content, imageURL: imageURL }
+  )
+    .then(() => res.send({ message: "Blog Edited" }))
+    .catch((err) => res.send({ message: err }));
+});
 
-app.get('/getblog',async(req,res)=>{
-    const blogs = await Blog.find({})
-    res.send(blogs)
-})
+app.get("/getblog", async (req, res) => {
+  const blogs = await Blog.find({});
+  res.send(blogs);
+});
 
-app.get('/searchblog',async(req,res)=>{
-    let id=req.query.id
-    const blogdata =await Blog.findById({_id : id}).exec()
-    res.send(blogdata)
-})
+app.get("/searchblog", async (req, res) => {
+  let id = req.query.id;
+  const blogdata = await Blog.findById({ _id: id }).exec();
+  res.send(blogdata);
+});
 
-app.get('/userblog',async(req,res)=>{
-    let name=req.query.name
-    const userblog = await Blog.find({creator : name}).exec()
-    res.send(userblog)
-})
+app.get("/userblog", async (req, res) => {
+  let name = req.query.name;
+  const userblog = await Blog.find({ creator: name }).exec();
+  res.send(userblog);
+});
 
+app.get("/", (req, res) => {
+  res.send("CHECK CHECK CHECK");
+});
 
-app.get('/',(req,res)=>{
-    res.send('CHECK CHECK CHECK')
-})
-
-
-
-
-app.listen(process.env.PORT || 5000 , ()=>{
-    console.log('Listening at PORT 5000')
-})
+app.listen(process.env.PORT || 5000, () => {
+  console.log("Listening at PORT 5000");
+});
